@@ -171,9 +171,9 @@ def create_grayscale_ghost_video(segments_dir, csv_path, output_file, num_segmen
 def create_temporal_ghost_video(segments_dir, csv_path, output_file, num_segments=12):
     """
     Creates a ghost video with temporal information encoded via RGB color zones:
-    - Early segments (1-4): RED tint
-    - Middle segments (5-8): GREEN tint
-    - Late segments (9-12): BLUE tint
+    - Early segments (0-3): RED tint
+    - Middle segments (4-7): GREEN tint
+    - Late segments (8-11): BLUE tint
     
     Static background: R+G+B = natural color
     Moving objects: retain their zone color = temporal identification
@@ -257,67 +257,20 @@ def create_temporal_ghost_video(segments_dir, csv_path, output_file, num_segment
         print("FFmpeg Error:\n", result.stderr)
 
 
-# ============================================================================
-# CONFIGURATION - Update these paths for your system
-# ============================================================================
-video_in = "/Users/neudestifanoes/desktop/claude/thevideo.mp4"
-csv_log = "video_analysis.csv"
-output_folder = "/Users/neudestifanoes/desktop/claude"
-seg_folder = "/Users/neudestifanoes/desktop/claude/segments_fixed"
-ghost_out = "/Users/neudestifanoes/desktop/claude/rgb_ghost_roundabout.mp4"
-ghost_out2 = "/Users/neudestifanoes/desktop/claude/solid_ghost_roundabout.mp4"
-hybrid_out = "/Users/neudestifanoes/desktop/claude/hybrid_ghost_roundabout.mp4"
-
-
-# ============================================================================
-# WORKFLOW - Uncomment each step as needed
-# ============================================================================
-
-# STEP 1: Analyze video and generate CSV (run once)
-#final_data = analyze_video(video_in)                                     
-#if 'final_data' in locals(): save_frame_report(final_data, output_folder)
-
-# STEP 2: Split video into segments at I-frames (run once)
-#split_video_pro(video_in, csv_log, seg_folder)
-
-# ============================================================================
-# RECOMMENDED WORKFLOW for Best Results
-# ============================================================================
-
-# APPROACH 1: Grayscale Base + RGB Overlay (RECOMMENDED)
-# Step A: Create clean grayscale base
-#create_grayscale_ghost_video(seg_folder, csv_log, ghost_out2, mode="lighten")
-
-# Step B: Create RGB temporal overlay
-#create_temporal_ghost_video(seg_folder, csv_log, ghost_out, num_segments=12)
-
-# Step C: Combine with multiply mode
-#combine_ghost_videos(ghost_out2, ghost_out, hybrid_out, mode="multiply")
-
-
-# APPROACH 2: Lighten Base + RGB Overlay (Alternative)
-# Step A: Create bright solid base
-#create_solid_ghost_video(seg_folder, csv_log, ghost_out2, mode="lighten")
-
-# Step B: Create RGB temporal overlay
-#create_temporal_ghost_video(seg_folder, csv_log, ghost_out, num_segments=12)
-
-# Step C: Combine with multiply or screen mode
-#combine_ghost_videos(ghost_out2, ghost_out, hybrid_out, mode="multiply")
 def combine_ghost_videos(solid_video_path, rgb_video_path, output_file, mode="overlay", opacity=0.6):
     """
     Overlays the RGB Ghost video onto the Solid Ghost video.
     
-    Mode options:
-    - 'overlay': Good for subtle color overlay (default)
-    - 'screen': Brightens and adds color
+    Blend mode options:
+    - 'overlay': Balanced, natural color overlay (recommended)
+    - 'hardlight': More intense, vibrant colors
+    - 'screen': Bright and washed out effect
     - 'addition': Simple additive blending
-    - 'hardlight': More intense color application
     
-    opacity: Controls RGB layer transparency (0.0-1.0)
+    Opacity: Controls how strong the RGB colors appear (0.0 = invisible, 1.0 = full strength)
     """
     
-    # For better control, we'll adjust the RGB opacity before blending
+    # Adjust the RGB opacity before blending for better control
     cmd = [
         "ffmpeg", "-y",
         "-i", solid_video_path,  # Input 0: The Structure (Grayscale/Solid)
@@ -337,19 +290,32 @@ def combine_ghost_videos(solid_video_path, rgb_video_path, output_file, mode="ov
         print(f"Success! Hybrid ghost video saved to: {output_file}")
     else:
         print("FFmpeg Error:\n", result.stderr)
-# ============================================================================
-# RUN THE FIX
-# ============================================================================
-# Use "overlay" to fix the green tint issue
-#combine_ghost_videos(ghost_out2, ghost_out, hybrid_out, mode="overlay")
-#create_temporal_ghost_video(seg_folder, csv_log, ghost_out, num_segments=12)
-#create_solid_ghost_video(seg_folder, csv_log, ghost_out2, mode="darken")
 
-# Step 1: Create grayscale base
+
+# ============================================================================
+# SETUP - Change these paths to match your files
+# ============================================================================
+video_in = "/Users/neudestifanoes/desktop/claude/thevideo.mp4"
+csv_log = "video_analysis.csv"
+output_folder = "/Users/neudestifanoes/desktop/claude"
+seg_folder = "/Users/neudestifanoes/desktop/claude/segments_fixed"
+ghost_out = "/Users/neudestifanoes/desktop/claude/rgb_ghost.mp4"
+ghost_out2 = "/Users/neudestifanoes/desktop/claude/grayscale.mp4"
+hybrid_out = "/Users/neudestifanoes/desktop/claude/final_hybrid.mp4"
+
+
+# ============================================================================
+# HOW TO USE - Uncomment the lines you need
+# ============================================================================
+
+# For running for first time? Run these lines once then comment them out:
+#final_data = analyze_video(video_in)
+#save_frame_report(final_data, output_folder)
+#split_video_pro(video_in, csv_log, seg_folder)
+
+# Then create your ghost video:
 #create_grayscale_ghost_video(seg_folder, csv_log, ghost_out2, num_segments=12, mode="lighten")
-
-# Step 2: Create RGB overlay
 #create_temporal_ghost_video(seg_folder, csv_log, ghost_out, num_segments=12)
+#combine_ghost_videos(ghost_out2, ghost_out, hybrid_out, mode="overlay", opacity=0.6)
 
-# Step 3: Combine them
-combine_ghost_videos(ghost_out2, ghost_out, hybrid_out, mode="overlay", opacity=1)
+# For slightly different color and version, Try mode="hardlight" at opacity=0.7 instead, 
