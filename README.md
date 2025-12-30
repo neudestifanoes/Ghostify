@@ -1,12 +1,12 @@
-# 🎥 Ghostify - Temporal Video Compression with Ghost Trails
+#Ghostify - Temporal Video Compression with Ghost Trails
 
 Compress hours of traffic footage into seconds while preserving **all movement** and **temporal information** through color-coded ghost trails.
 
-## 📹 Demo
+##Demo
 
 **Original Video:** [Roundabout Traffic from Pexels](https://www.pexels.com/download/video/17870296/)
 - Duration: 34 seconds
-- Contains: Multiple cars passing through a roundabout
+- Contains: Its a video of multiple cars passing through a roundabout
 
 ### Results Comparison
 
@@ -20,12 +20,12 @@ Compress hours of traffic footage into seconds while preserving **all movement**
 
 ---
 
-## 🎨 How It Works
+## How It Works
 
 ### Color Coding System
-- 🔴 **RED** = Cars from first 11 seconds (early)
-- 🟢 **GREEN** = Cars from middle 11 seconds (middle)  
-- 🔵 **BLUE** = Cars from last 11 seconds (late)
+-  **RED** = Cars from first 11 seconds (early)
+-  **GREEN** = Cars from middle 11 seconds (middle)  
+-  **BLUE** = Cars from last 11 seconds (late)
 
 **Key Insight:** Static backgrounds appear in all time segments, so RED + GREEN + BLUE = natural color. Moving objects only appear in specific time windows, retaining their temporal color.
 
@@ -46,7 +46,7 @@ Original Video (34s)
 
 ---
 
-## 🚀 Installation
+##  Installation
 
 ### Prerequisites
 - Python 3.7+
@@ -76,7 +76,7 @@ pip install -r requirements.txt
 
 ---
 
-## 📖 Usage
+##  Usage
 
 ### Step 1: Configure Paths
 
@@ -201,17 +201,17 @@ Overlays RGB temporal video onto grayscale base.
 
 ---
 
-## 🎯 Best Practices
+##  Best Practices
 
 ### Video Selection
-✅ **Good for:**
+ **Good for:**
 - Traffic intersections
 - Roundabouts
 - Pedestrian crossings
 - Wildlife trails
 - Time-lapse of moving objects
 
-❌ **Not ideal for:**
+ **Not ideal for:**
 - Handheld/shaky footage
 - Videos with camera movement
 - Low frame rate videos
@@ -232,7 +232,7 @@ combine_ghost_videos(..., mode="hardlight", opacity=0.7)
 
 ---
 
-## 🔧 Troubleshooting
+##  Troubleshooting
 
 ### Issue: "FFmpeg not found"
 **Solution:** Install FFmpeg and ensure it's in your system PATH
@@ -255,7 +255,7 @@ combine_ghost_videos(..., mode="hardlight", opacity=0.7)
 
 ---
 
-## 📊 Performance Notes
+##  Performance Notes
 
 - **Analysis time:** ~30 seconds per minute of video
 - **Splitting:** Very fast (copy operation, no re-encode)
@@ -264,7 +264,7 @@ combine_ghost_videos(..., mode="hardlight", opacity=0.7)
 
 ---
 
-## 🎓 Understanding the Code
+##  Understanding the Code
 
 ### Why I-frames?
 I-frames (keyframes) are complete images, while P/B frames store differences. Splitting at I-frames ensures:
@@ -295,34 +295,5 @@ This isolates each color, ensuring temporal clarity.
 
 ---
 
-## 🤝 Contributing
 
-Contributions welcome! Ideas for improvement:
-- [ ] GUI interface
-- [ ] Automatic segment detection
-- [ ] Custom color schemes
-- [ ] Variable time zone sizes
-- [ ] Real-time preview
-- [ ] Batch processing
 
----
-
-## 📄 License
-
-MIT License - feel free to use and modify!
-
----
-
-## 🙏 Credits
-
-- Original video from [Pexels](https://www.pexels.com/)
-- Built with PyAV, FFmpeg, and Python
-- Concept: Temporal compression through additive color visualization
-
----
-
-## 📧 Contact
-
-Questions? Open an issue or reach out!
-
-**Enjoy creating ghost trails!** 👻🎥
