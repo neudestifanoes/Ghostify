@@ -7,7 +7,6 @@ import os
 import subprocess
 
 
-
 def analyze_video(file_path):
     """
     Uses PyAV to probe the video container and extract the type (I, P, B) 
@@ -18,9 +17,7 @@ def analyze_video(file_path):
         results = []
         frame_count = 0
 
-        # demux() gives us access to 'packets' (compressed data) to get byte size
         for packet in container.demux(video=0):
-            # decode() turns those packets into 'frames' (raw pixels) to get frame type
             for frame in packet.decode():
                 try:
                     ptype = PictureType(frame.pict_type).name
@@ -43,6 +40,7 @@ def analyze_video(file_path):
     except Exception as e:
         print(f"An error occurred during analysis: {e}")
         return []
+
 
 def plot_frames(frame_data):
     """
@@ -74,7 +72,6 @@ def plot_frames(frame_data):
     plt.show()
 
 
-
 def save_frame_report(frame_data, destination_folder, filename="video_analysis.csv"):
     """
     Saves the analyzed frame data into a CSV for later use in splitting/blending.
@@ -88,7 +85,6 @@ def save_frame_report(frame_data, destination_folder, filename="video_analysis.c
         print(f"--- SUCCESS: Report saved to {full_path} ---")
     except Exception as e:
         print(f"Failed to save file: {e}")
-
 
 
 def split_video_pro(video_path, csv_path, output_dir):
@@ -119,35 +115,41 @@ def split_video_pro(video_path, csv_path, output_dir):
     subprocess.run(cmd)
     print(f"Split complete. Files saved in: {output_dir}")
 
-def create_solid_ghost_video(segments_dir, csv_path, output_file, mode="darken"):
+
+def create_grayscale_ghost_video(segments_dir, csv_path, output_file, num_segments=12, mode="lighten"):
     """
-    Layers segments using comparative blending (darken/lighten).
-    - tpad: Extends the short final segment to match the others, this is bc the last segment did not have 
-    90 frames so we needed to pad it up
-    - blend: Compares pixels across all segments to keep cars solid while background stays static.
+    Creates a clean grayscale ghost video as a base for RGB overlay.
+    Converts to grayscale first, then blends for a neutral white/gray base.
     """
     df = pd.read_csv(csv_path)
     total_frames = len(df)
     last_iframe_idx = df[df['type'] == 'I']['index'].max()
     
-    # Handle the short 11th segment by cloning its last frame
     frames_in_last = total_frames - last_iframe_idx
     padding_needed = 90 - frames_in_last 
     
     input_args = []
-    for i in range(12): # Assuming 12 segments based on your previous data
+    for i in range(num_segments):
         file_path = os.path.join(segments_dir, f"segment_{i:03d}.mp4")
         input_args.extend(["-i", file_path])
 
-    # Build the blend chain filter
-    filter_parts = [f"[11:v]tpad=stop={padding_needed}:stop_mode=clone[v11_padded]"]
-    last_label = "[0:v]"
-    for i in range(1, 11):
-        next_label = f"[b{i}]"
-        filter_parts.append(f"{last_label}[{i}:v]blend=all_mode={mode}{next_label}")
+    # Build filter: convert each segment to grayscale, then blend
+    filter_parts = []
+    
+    # Convert each segment to grayscale (except last, which needs padding)
+    for i in range(num_segments - 1):
+        filter_parts.append(f"[{i}:v]hue=s=0[v{i}_gray]")
+    
+    # Pad and grayscale the last segment
+    filter_parts.append(f"[{num_segments-1}:v]tpad=stop={padding_needed}:stop_mode=clone,hue=s=0[v{num_segments-1}_gray]")
+    
+    # Blend all grayscale segments
+    last_label = "[v0_gray]"
+    for i in range(1, num_segments):
+        next_label = f"[b{i}]" if i < num_segments - 1 else "[outv]"
+        filter_parts.append(f"{last_label}[v{i}_gray]blend=all_mode={mode}{next_label}")
         last_label = next_label
-        
-    filter_parts.append(f"{last_label}[v11_padded]blend=all_mode={mode}[outv]")
+    
     filter_complex = "; ".join(filter_parts)
 
     cmd = [
@@ -158,31 +160,196 @@ def create_solid_ghost_video(segments_dir, csv_path, output_file, mode="darken")
         output_file
     ]
 
-    print(f"Generating Composite (Mode: {mode})...")
+    print(f"Generating Grayscale Ghost Base (Mode: {mode})...")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
-        print(f"Success! Final ghost video: {output_file}")
+        print(f"Success! Grayscale ghost video: {output_file}")
     else:
         print("FFmpeg Error:\n", result.stderr)
 
 
+def create_temporal_ghost_video(segments_dir, csv_path, output_file, num_segments=12):
+    """
+    Creates a ghost video with temporal information encoded via RGB color zones:
+    - Early segments (1-4): RED tint
+    - Middle segments (5-8): GREEN tint
+    - Late segments (9-12): BLUE tint
+    
+    Static background: R+G+B = natural color
+    Moving objects: retain their zone color = temporal identification
+    """
+    df = pd.read_csv(csv_path)
+    total_frames = len(df)
+    last_iframe_idx = df[df['type'] == 'I']['index'].max()
+    
+    # Handle the short final segment by padding
+    frames_in_last = total_frames - last_iframe_idx
+    padding_needed = 90 - frames_in_last
+    
+    # Build input arguments
+    input_args = []
+    for i in range(num_segments):
+        file_path = os.path.join(segments_dir, f"segment_{i:03d}.mp4")
+        input_args.extend(["-i", file_path])
+    
+    # Build the complex filter with RGB temporal zones
+    filter_parts = []
+    
+    # Pad the last segment first
+    filter_parts.append(f"[{num_segments-1}:v]tpad=stop={padding_needed}:stop_mode=clone[v{num_segments-1}_padded]")
+    
+    # Determine which third each segment belongs to
+    third_size = num_segments / 3
+    
+    # Apply color zone to each segment
+    for i in range(num_segments):
+        input_label = f"[v{i}_padded]" if i == num_segments-1 else f"[{i}:v]"
+        output_label = f"[v{i}_processed]"
+        
+        # Determine color zone based on segment index
+        if i < third_size:
+            # Early: RED zone (keep red, reduce green and blue)
+            color_filter = "colorchannelmixer=rr=1.0:rg=0:rb=0:gr=0:gg=0:gb=0:br=0:bg=0:bb=0"
+            zone = "RED"
+        elif i < 2 * third_size:
+            # Middle: GREEN zone (keep green, reduce red and blue)
+            color_filter = "colorchannelmixer=rr=0:rg=0:rb=0:gr=0:gg=1.0:gb=0:br=0:bg=0:bb=0"
+            zone = "GREEN"
+        else:
+            # Late: BLUE zone (keep blue, reduce red and green)
+            color_filter = "colorchannelmixer=rr=0:rg=0:rb=0:gr=0:gg=0:gb=0:br=0:bg=0:bb=1.0"
+            zone = "BLUE"
+        
+        # Apply color zone
+        filter_parts.append(f"{input_label}{color_filter}{output_label}")
+        print(f"  Segment {i:02d}: {zone} zone")
+    
+    # Now blend all processed segments using lighten mode (better for RGB additive)
+    # Start with first segment
+    last_label = "[v0_processed]"
+    
+    for i in range(1, num_segments):
+        next_label = f"[blend{i}]" if i < num_segments - 1 else "[outv]"
+        filter_parts.append(
+            f"{last_label}[v{i}_processed]blend=all_mode=lighten{next_label}"
+        )
+        last_label = next_label
+    
+    filter_complex = "; ".join(filter_parts)
+    
+    cmd = [
+        "ffmpeg", "-y"
+    ] + input_args + [
+        "-filter_complex", filter_complex,
+        "-map", "[outv]", "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p",
+        output_file
+    ]
+    
+    print(f"Generating RGB Temporal Ghost Video...")
+    print(f"  - Early (segments 0-3): RED")
+    print(f"  - Middle (segments 4-7): GREEN")
+    print(f"  - Late (segments 8-11): BLUE")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    if result.returncode == 0:
+        print(f"Success! RGB temporal ghost video: {output_file}")
+    else:
+        print("FFmpeg Error:\n", result.stderr)
 
-# Make sure you set ur own path 
-video_in = "/Users/neudestifanoes/desktop/ghostify/thevideo.mp4"
+
+# ============================================================================
+# CONFIGURATION - Update these paths for your system
+# ============================================================================
+video_in = "/Users/neudestifanoes/desktop/claude/thevideo.mp4"
 csv_log = "video_analysis.csv"
-output_folder = "/Users/neudestifanoes/desktop/ghostify"
-seg_folder = "/Users/neudestifanoes/desktop/ghostify/segments_fixed"
-ghost_out = "/Users/neudestifanoes/desktop/ghostify/solid_ghost_roundabout.mp4"
+output_folder = "/Users/neudestifanoes/desktop/claude"
+seg_folder = "/Users/neudestifanoes/desktop/claude/segments_fixed"
+ghost_out = "/Users/neudestifanoes/desktop/claude/rgb_ghost_roundabout.mp4"
+ghost_out2 = "/Users/neudestifanoes/desktop/claude/solid_ghost_roundabout.mp4"
+hybrid_out = "/Users/neudestifanoes/desktop/claude/hybrid_ghost_roundabout.mp4"
 
-# ALl function calls are down here and for each step, make sure to comment the one above it so you don't have multiple duplicates
-# of CSV and segmented videos
 
-# Uncoment both of these to analyze the video and save the CSV
+# ============================================================================
+# WORKFLOW - Uncomment each step as needed
+# ============================================================================
+
+# STEP 1: Analyze video and generate CSV (run once)
 #final_data = analyze_video(video_in)                                     
-#if 'final_data' in locals(): save_frame_report(final_data, output_folder) 
+#if 'final_data' in locals(): save_frame_report(final_data, output_folder)
 
-# Uncomment this to chop video into segments
-#split_video_pro(video_in, csv_log, seg_folder)                          
+# STEP 2: Split video into segments at I-frames (run once)
+#split_video_pro(video_in, csv_log, seg_folder)
 
-# Uncomment this to create final ghost video
-#create_solid_ghost_video(seg_folder, csv_log, ghost_out, mode="darken")  
+# ============================================================================
+# RECOMMENDED WORKFLOW for Best Results
+# ============================================================================
+
+# APPROACH 1: Grayscale Base + RGB Overlay (RECOMMENDED)
+# Step A: Create clean grayscale base
+#create_grayscale_ghost_video(seg_folder, csv_log, ghost_out2, mode="lighten")
+
+# Step B: Create RGB temporal overlay
+#create_temporal_ghost_video(seg_folder, csv_log, ghost_out, num_segments=12)
+
+# Step C: Combine with multiply mode
+#combine_ghost_videos(ghost_out2, ghost_out, hybrid_out, mode="multiply")
+
+
+# APPROACH 2: Lighten Base + RGB Overlay (Alternative)
+# Step A: Create bright solid base
+#create_solid_ghost_video(seg_folder, csv_log, ghost_out2, mode="lighten")
+
+# Step B: Create RGB temporal overlay
+#create_temporal_ghost_video(seg_folder, csv_log, ghost_out, num_segments=12)
+
+# Step C: Combine with multiply or screen mode
+#combine_ghost_videos(ghost_out2, ghost_out, hybrid_out, mode="multiply")
+def combine_ghost_videos(solid_video_path, rgb_video_path, output_file, mode="overlay", opacity=0.6):
+    """
+    Overlays the RGB Ghost video onto the Solid Ghost video.
+    
+    Mode options:
+    - 'overlay': Good for subtle color overlay (default)
+    - 'screen': Brightens and adds color
+    - 'addition': Simple additive blending
+    - 'hardlight': More intense color application
+    
+    opacity: Controls RGB layer transparency (0.0-1.0)
+    """
+    
+    # For better control, we'll adjust the RGB opacity before blending
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", solid_video_path,  # Input 0: The Structure (Grayscale/Solid)
+        "-i", rgb_video_path,    # Input 1: The Color (RGB)
+        "-filter_complex", 
+        f"[1:v]format=yuva420p,colorchannelmixer=aa={opacity}[rgb_adjusted];"
+        f"[0:v][rgb_adjusted]blend=all_mode={mode}[outv]",
+        "-map", "[outv]", 
+        "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p",
+        output_file
+    ]
+
+    print(f"Generating Composite Hybrid (Mode: {mode}, Opacity: {opacity})...")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    if result.returncode == 0:
+        print(f"Success! Hybrid ghost video saved to: {output_file}")
+    else:
+        print("FFmpeg Error:\n", result.stderr)
+# ============================================================================
+# RUN THE FIX
+# ============================================================================
+# Use "overlay" to fix the green tint issue
+#combine_ghost_videos(ghost_out2, ghost_out, hybrid_out, mode="overlay")
+#create_temporal_ghost_video(seg_folder, csv_log, ghost_out, num_segments=12)
+#create_solid_ghost_video(seg_folder, csv_log, ghost_out2, mode="darken")
+
+# Step 1: Create grayscale base
+#create_grayscale_ghost_video(seg_folder, csv_log, ghost_out2, num_segments=12, mode="lighten")
+
+# Step 2: Create RGB overlay
+#create_temporal_ghost_video(seg_folder, csv_log, ghost_out, num_segments=12)
+
+# Step 3: Combine them
+combine_ghost_videos(ghost_out2, ghost_out, hybrid_out, mode="overlay", opacity=1)

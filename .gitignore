@@ -1,0 +1,29 @@
+# Video files
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+
+
+# Segment folders
+segments/
+segments_fixed/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Personal paths (users should update these)
+**/desktop/**
