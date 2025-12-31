@@ -12,11 +12,11 @@ Compress hours of traffic footage into seconds while preserving **all movement**
 
 | Type | Screenshot | Description | Pros | Cons |
 |------|------------|-------------|------|------|
-| **[Original](https://youtu.be/sZcRzFHI17s)** | ![Original](examples/original_video_screenshot.png) | Standard 34-second traffic video | Full detail, natural colors | Long duration, hard to see patterns |
-| **Grayscale Ghost** | ![Grayscale](examples/grayscale_ghost.png) | Clean black & white base layer | Neutral base, clear structure | No temporal information |
-| **Solid Ghost (Darken)** | ![Solid](examples/solid_ghost_darken.png) | All segments darkened together | Shows all movement clearly | Dark/green tint, no temporal info |
-| **RGB Temporal** | ![RGB](examples/rgb_temporal.png) | Color-coded by time zones | Clear temporal separation | Too faint/transparent on its own |
-| **Hybrid Final** | ![Hybrid](examples/hybrid_final.png) | Grayscale + RGB overlay | **Best: Clear + Colorful + Temporal** | Requires two-step process |
+| **[Original](https://www.pexels.com/download/video/17870296/)** | ![Original](examples/original_video_screenshot.png) | Standard 34-second traffic video | Full detail, natural colors | Long duration, hard to see patterns |
+| **[Grayscale Ghost](https://youtu.be/-chbD_C2iws)** | ![Grayscale](examples/grayscale_ghost.png) | Clean black & white base layer | Neutral base, clear structure | No temporal information |
+| **[Solid Ghost (Darken)](https://youtu.be/JGCdkc90-qQ)** | ![Solid](examples/solid_ghost_darken.png) | All segments darkened together | Shows all movement clearly | Dark/green tint, no temporal info |
+| **[RGB Temporal](https://youtu.be/sZcRzFHI17s)** | ![RGB](examples/rgb_temporal.png) | Color-coded by time zones | Clear temporal separation | Too faint/transparent on its own |
+| **[Hybrid Final](https://youtu.be/FLx7Rf3aGYs)** | ![Hybrid](examples/hybrid_final.png) | Grayscale + RGB overlay | **Best: Clear + Colorful + Temporal** | Requires two-step process |
 
 ---
 
