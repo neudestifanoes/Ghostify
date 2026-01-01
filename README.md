@@ -131,7 +131,7 @@ create_solid_ghost_video(seg_folder, csv_log, ghost_out2, mode="darken")
 
 ---
 
-## 🎛️ Function Reference
+## Function Reference
 
 ### `analyze_video(file_path)`
 Extracts frame information (I/P/B types, sizes, timestamps) using PyAV.
